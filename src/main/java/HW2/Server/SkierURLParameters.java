@@ -1,4 +1,4 @@
-package Server;
+package HW2.Server;
 
 public class SkierURLParameters {
   private int resortID;

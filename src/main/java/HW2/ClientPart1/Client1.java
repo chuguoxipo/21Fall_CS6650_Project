@@ -1,19 +1,13 @@
-package ClientPart2;
+package HW2.ClientPart1;
 
-import ClientPart1.CommandLineIputs;
-import ClientPart1.Parser;
-import ClientPart1.ServiceUnavailableRetryHandler;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.httpclient.MultiThreadedHttpConnectionManager;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.client.HttpRequestRetryHandler;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -25,7 +19,7 @@ import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 
-public class Client2 {
+public class Client1 {
 
   private static AtomicInteger successfulRequests = new AtomicInteger();
   protected static AtomicInteger unsuccessfulRequests = new AtomicInteger();
@@ -33,12 +27,10 @@ public class Client2 {
 
   public static void main (String[] args) throws InterruptedException {
 
-    // Client Manager Instance
     PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
     cm.setMaxTotal(5000);
     cm.setDefaultMaxPerRoute(5000);
 
-    // Client Instance
     CloseableHttpClient client = HttpClientBuilder
         .create()
         .setRetryHandler(new HttpRequestRetryHandler() {
@@ -61,6 +53,7 @@ public class Client2 {
         .build();
 
     // Deal with command Line inputs
+//    System.out.println(args[1]);
     CommandLineIputs inputs = Parser.parse(args);
 
     int numThreads = inputs.getNumThreads();
@@ -79,6 +72,9 @@ public class Client2 {
     CountDownLatch phaseThreeThreadsAllCompletionCounter = new CountDownLatch(phaseThreeThreads);
 
     // Skier ID Range
+    System.out.println("phaseOneThreads: " + phaseOneThreads);
+    System.out.println("phaseTwoThreads: " + phaseTwoThreads);
+    System.out.println("phaseThreeThreads: " + phaseThreeThreads);
     int phaseOneSkierIDRange = getSkierIDRange(phaseOneThreads, numSkiers);
     int phaseTwoSkierIDRange = getSkierIDRange(phaseTwoThreads, numSkiers);
     int phaseThreeSkierIDRange = getSkierIDRange(phaseThreeThreads, numSkiers);
@@ -96,23 +92,22 @@ public class Client2 {
     CountDownLatch phaseTwoThreadsCompleted = new CountDownLatch((phaseTwoThreads + 10 - 1) / 10);
     CountDownLatch phaseThreeThreadsCompleted = new CountDownLatch(phaseThreeThreads);
 
-    List<SingleRequestPerformance> resultsRecorder = Collections.synchronizedList(new ArrayList<>());
-
     // Start
     long start = System.currentTimeMillis();
 
     // Phase 1
     phaseLogic(phaseOneThreads, phaseOneSkierIDRange, phaseOneStartTime, phaseOneEndTime, numLifts,
         phaseOneThreadsCompleted, numRuns, numSkiers, phaseOneThreadsAllCompletionCounter, client,
-        0.2, resultsRecorder, IP);
+        0.2, IP);
     // Phase 2
     phaseLogic(phaseTwoThreads, phaseTwoSkierIDRange, phaseTwoStartTime, phaseTwoEndTime,
         numLifts,phaseTwoThreadsCompleted, numRuns, numSkiers, phaseTwoThreadsAllCompletionCounter, client,
-        0.6, resultsRecorder, IP);
+        0.6, IP);
     // phase 3
     phaseLogic(phaseThreeThreads, phaseThreeSkierIDRange, phaseThreeStartTime, phaseThreeEndTime,
         numLifts, phaseThreeThreadsCompleted, numRuns, numSkiers, phaseThreeThreadsAllCompletionCounter, client,
-        0.1, resultsRecorder, IP);
+        0.1, IP);
+
 
     // Final Printout
     phaseOneThreadsAllCompletionCounter.await();
@@ -129,72 +124,12 @@ public class Client2 {
     System.out.println("Took: " + wallTime + " milliseconds.");
     System.out.println("Total throughput in requests per second: " +
         successfulRequests.doubleValue() / (wallTime/1000));
-
-    System.out.println("-----------------------------------------");
-
-    // Write to CSV
-    writeToCSV(resultsRecorder, numThreads);
-
-    // Client Part2 output
-    System.out.println("Mean response time is: " + getMeanResponseTime(resultsRecorder) + " milliseconds");
-    System.out.println("Throughput in requests per second is: " + getThroughput(resultsRecorder));
-    System.out.println("Median response time is: " + percentile(resultsRecorder, 50) + " milliseconds");
-    System.out.println("p99 response time is: " + percentile(resultsRecorder, 99) + " milliseconds");
-    System.out.println("Max response time is: " + getMaxResponseTime(resultsRecorder) + " milliseconds");
-  }
-
-  private static long getMeanResponseTime(List<SingleRequestPerformance> resultsRecorder) {
-    long sum = 0;
-    for (SingleRequestPerformance performance : resultsRecorder) {
-      sum += performance.end - performance.start;
-    }
-    return sum / resultsRecorder.size();
-  }
-  private static long getThroughput(List<SingleRequestPerformance> resultsRecorder) {
-    int totalRequests = resultsRecorder.size();
-    long wallTime = resultsRecorder.get(totalRequests - 1).end - resultsRecorder.get(0).start;
-    return totalRequests / (wallTime / 1000);
-  }
-  private static long getMaxResponseTime(List<SingleRequestPerformance> resultsRecorder) {
-    long max = 0;
-    for (SingleRequestPerformance performance : resultsRecorder) {
-      max = Math.max(max, performance.end - performance.start);
-    }
-    return max;
-  }
-
-  private static long percentile(List<SingleRequestPerformance> resultsRecorder, double percentile) {
-    Collections.sort(resultsRecorder, new Comparator<SingleRequestPerformance>() {
-      @Override
-      public int compare(SingleRequestPerformance o1, SingleRequestPerformance o2) {
-        return (int) ((o1.end - o1.start) - (o2.end - o2.start));
-      }
-    });
-    int index = (int) Math.ceil(percentile / 100.0 * resultsRecorder.size());
-    return resultsRecorder.get(index-1).end - resultsRecorder.get(index-1).start;
-  }
-
-  private static void writeToCSV(List<SingleRequestPerformance> resultsRecorder, int numThreads) {
-    try {
-      FileWriter csvWriter = new FileWriter(numThreads + "_performanceResults.csv");
-      csvWriter.append("StartTime" + "," + "EndTime" + "," + "TotalTimeUsed" + "," + "StatusCode" + "," + "RequestType" + "\n");
-      for (SingleRequestPerformance performance : resultsRecorder) {
-        csvWriter.append(performance.toString());
-      }
-      csvWriter.flush();
-      csvWriter.close();
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
   }
 
   private static void phaseLogic(int numThreads, int skierIDRange, int startTime, int endTime,
       int numLifts, CountDownLatch completed, int numRuns, int numSkiers,
-      CountDownLatch phaseAllThreadsCompletionCounter, CloseableHttpClient client,
-      double phaseNumOfRequestMultiplier, List<SingleRequestPerformance> singleRequestPerformanceList,
+      CountDownLatch phaseAllThreadsCompletionCounter, CloseableHttpClient client, double phaseNumOfRequestMultiplier,
       String IP) throws InterruptedException {
-
-
 
     int numRequests = (int) (numRuns * numSkiers * phaseNumOfRequestMultiplier) / numThreads;
     int additionalRequests = 0;
@@ -221,7 +156,7 @@ public class Client2 {
       }
 
       Runnable thread = getSingleThread(json, numRequests, client, completed,
-          i, additionalRequests, phaseAllThreadsCompletionCounter, singleRequestPerformanceList, IP);
+          i, additionalRequests, phaseAllThreadsCompletionCounter, IP);
 
       pendingStartThreads.add(thread);
     }
@@ -231,20 +166,19 @@ public class Client2 {
     }
 
     completed.await();
-
   }
 
   private static Runnable getSingleThread(String json, int numRequests, CloseableHttpClient client, CountDownLatch completed,
       int currentIteration, int numAdditionalRequests, CountDownLatch phaseAllThreadsCompletionCounter,
-      List<SingleRequestPerformance> singleRequestPerformanceList, String IP) {
+      String IP) {
     Runnable thread = () -> {
       for (int j = 0; j < numRequests; j++) {
-        runSingleRequest(json, client, completed, singleRequestPerformanceList, IP);
+        runSingleRequest(json, client, completed, IP);
       }
 
       if (currentIteration == 0) {
         for (int j = 0; j < numAdditionalRequests; j++) {
-          runSingleRequest(json, client, completed, singleRequestPerformanceList, IP);
+          runSingleRequest(json, client, completed, IP);
         }
       }
 
@@ -255,23 +189,16 @@ public class Client2 {
     return thread;
   }
 
-  private static void runSingleRequest(String json, CloseableHttpClient client, CountDownLatch completed, List<SingleRequestPerformance> singleRequestPerformanceList,
-  String IP) {
+  private static void runSingleRequest(String json, CloseableHttpClient client, CountDownLatch completed,
+      String IP) {
     try {
       HttpPost httppost = new HttpPost(IP);
       httppost.setEntity(new StringEntity(json));
       httppost.setHeader("Accept", "application/json");
       httppost.setHeader("Content-type", "application/json");
 
-      long start = System.currentTimeMillis();
       CloseableHttpResponse httpResponse = client.execute(httppost);
-      long end = System.currentTimeMillis();
-      int statusCode = httpResponse.getStatusLine().getStatusCode();
-      String requestType = httppost.getMethod();
-      SingleRequestPerformance performance = new SingleRequestPerformance(start, end, statusCode, requestType);
-      singleRequestPerformanceList.add(performance);
       HttpEntity responseEntity = httpResponse.getEntity();
-//            System.out.println(EntityUtils.toString(responseEntity));
       EntityUtils.consume(responseEntity);
       successfulRequests.incrementAndGet();
     } catch (Exception e) {
@@ -311,26 +238,5 @@ public class Client2 {
 
   private static int getRandom (int min, int max) {
     return ThreadLocalRandom.current().nextInt(min, max + 1);
-  }
-
-  public static class SingleRequestPerformance {
-    public long start;
-    public long end;
-    public int statusCode;
-    public String requestType;
-
-    public SingleRequestPerformance(long start, long end, int statusCode, String requestType) {
-      this.start = start;
-      this.end = end;
-      this.statusCode = statusCode;
-      this.requestType = requestType;
-    }
-
-    @Override
-    public String toString() {
-//            return "Start: " + start + " End: " + end + " TimeUsed: " + (end - start) + " StatusCode: "
-//            + statusCode + " RequestType: " + requestType;
-      return start + "," + end + "," + (end - start) + "," + statusCode + "," + requestType + "\n";
-    }
   }
 }

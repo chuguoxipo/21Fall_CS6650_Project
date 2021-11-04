@@ -1,4 +1,4 @@
-package ClientPart1;
+package HW2.ClientPart1;
 
 import java.io.IOException;
 import org.apache.http.HttpEntity;
@@ -10,7 +10,8 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
 
 public class SingleThreadLatency {
-  private static String url = "http://50.17.20.218:8080/21Fall_CS6650_Project_war/skiers/1/seasons/2019/days/1/skiers/123";
+//  private static String url = "http://newskierservicelb-1-1525652022.us-east-1.elb.amazonaws.com/21Fall_CS6650_Project_war/skiers/1/seasons/2019/days/1/skiers/123";
+  private static String url = "http://localhost:8080/21Fall_CS6650_Project_war_exploded/skiers/1/seasons/2019/days/1/skiers/123";
 
   public static void main(String[] args) {
 

@@ -1,4 +1,4 @@
-package ClientPart1;
+package HW2.ClientPart1;
 
 
 public class Parser {
@@ -46,7 +46,7 @@ public class Parser {
   private static boolean isValidNumThreads(String s) {
     return (isInteger(s, 10) &&
             Integer.parseInt(s) >= 0 &&
-            Integer.parseInt(s) <= 256);
+            Integer.parseInt(s) <= 512);
   }
 
   private static boolean isValidNumSkiers(String s) {

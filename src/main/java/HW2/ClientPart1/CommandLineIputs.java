@@ -1,4 +1,4 @@
-package ClientPart1;
+package HW2.ClientPart1;
 
 public class CommandLineIputs {
 
@@ -59,7 +59,7 @@ public class CommandLineIputs {
 
   @Override
   public String toString() {
-    return "ClientPart1.CommandLineIputs{" +
+    return "HW2.ClientPart1.CommandLineIputs{" +
         "numThreads=" + numThreads +
         ", numSkiers=" + numSkiers +
         ", numLifts=" + numLifts +

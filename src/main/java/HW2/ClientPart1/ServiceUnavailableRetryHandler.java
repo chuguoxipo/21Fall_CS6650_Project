@@ -1,4 +1,4 @@
-package ClientPart1;
+package HW2.ClientPart1;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ServiceUnavailableRetryStrategy;

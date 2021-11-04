@@ -1,4 +1,4 @@
-package ClientPart1;
+package HW2.ClientPart1;
 
 public class CommandLineConstants {
 

@@ -1,17 +1,62 @@
-package Server;
+package HW2.Server;
 
 import com.google.gson.Gson;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.servlet.*;
 import javax.servlet.http.*;
 import javax.servlet.annotation.*;
 import java.io.IOException;
+import java.util.concurrent.TimeoutException;
 
-@WebServlet(name = "Server.SkierServlet", value = "/Server.SkierServlet")
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.MessageProperties;
+//import org.apache.commons.logging.Log;
+//import org.apache.commons.logging.LogFactory;
+//import org.apache.commons.logging.Log;
+//import org.apache.commons.logging.LogFactory;
+
+@WebServlet(name = "HW2.Server.SkierServlet", value = "/HW2.Server.SkierServlet")
 public class SkierServlet extends HttpServlet {
+//  private static Log log = LogFactory.getLog(SkierServlet.class);
+//  private static Log log = LogFactory.getLog(SkierServlet.class);
+  private static final String TASK_QUEUE_NAME = "task_queue";
+  private static final int numThreads = 200;
+  private Connection connection;
+  private ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+
+  @Override
+  public void init() throws ServletException {
+    super.init();
+    System.out.println("running init");
+//    log.info("log is printing: running init");
+    ConnectionFactory factory = new ConnectionFactory();
+//    factory.setHost("52.23.168.91");
+    factory.setHost("172.31.80.101");
+    factory.setUsername("admin");
+    factory.setPassword("admin");
+//    System.out.println("trying to connect: 52.23.168.91");
+    System.out.println("trying to connect: 172.31.80.101");
+    System.out.println("username: admin");
+    System.out.println("password: admin");
+
+
+
+    try {this.connection = factory.newConnection(executorService);} catch (IOException e) {
+      e.printStackTrace();
+    } catch (TimeoutException e) {
+      e.printStackTrace();
+    }
+  }
 
   @Override
   protected void doGet(HttpServletRequest req, HttpServletResponse res)
       throws ServletException, IOException {
+    System.out.println("receiving doGet request.");
+//    log.info("log is printing: receiving doGet request.");
 
     getSkierParams(req, res);
   }
@@ -19,7 +64,10 @@ public class SkierServlet extends HttpServlet {
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse res)
-      throws ServletException, IOException {res.setContentType("text/plain");
+      throws ServletException, IOException {
+    System.out.println("receiving doPost request.");
+//    log.info("log is printing: receiving doPost request.");
+    res.setContentType("text/plain");
     String urlPath = req.getPathInfo();
 
     // check we have a URL!
@@ -33,23 +81,52 @@ public class SkierServlet extends HttpServlet {
     // and now validate url path and return the response status code
     // (and maybe also some value if input is valid)
 
+//    System.out.println("line 72");
     if (!isUrlValid(urlParts)) {
       res.setStatus(HttpServletResponse.SC_BAD_REQUEST);
       res.getWriter().write("invalid parameters");
     } else {
       Gson gson = new Gson();
-      try {
-        StringBuilder sb = new StringBuilder();
-        String s;
-        while ((s = req.getReader().readLine()) != null) {
-          sb.append(s);
-        }
-        LiftRide liftRide = gson.fromJson(sb.toString(), LiftRide.class);
-        res.getWriter().write(liftRide.toString());
-        System.out.println(liftRide.toString());
-      } catch (IOException e) {
-        e.printStackTrace();
+
+      StringBuilder sb = new StringBuilder();
+      String s;
+      while ((s = req.getReader().readLine()) != null) {
+        sb.append(s);
       }
+      LiftRide liftRide = gson.fromJson(sb.toString(), LiftRide.class);
+      System.out.println(liftRide.toString());
+
+      // Create new channel
+      String message = sb.toString();
+      Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
+
+          try {
+
+            try (Channel channel = connection.createChannel()) {
+              channel.queueDeclare(TASK_QUEUE_NAME, true, false, false, null);
+              channel.basicPublish("", TASK_QUEUE_NAME,
+                      MessageProperties.PERSISTENT_TEXT_PLAIN,
+                      message.getBytes("UTF-8")
+              );
+              System.out.println("Sent '" + message + "'");
+            } catch (Exception e ) {
+//          System.out.println("99");
+              System.out.println(e);
+//          e.printStackTrace();
+              throw e;
+            }
+          } catch (IOException | TimeoutException e) {
+//        System.out.println("105");
+            System.out.println(e);
+            e.printStackTrace();
+          }
+        }
+      };
+
+      executorService.execute(runnable);
+
       res.setStatus(HttpServletResponse.SC_CREATED);
       // do any sophisticated processing with urlParts which contains all the url params
       // TODO: process url params in `urlParts`
@@ -59,7 +136,7 @@ public class SkierServlet extends HttpServlet {
       int skierID = Integer.parseInt(urlParts[7]);
 
       SkierURLParameters skierParams = new SkierURLParameters(resortID, seasonID, dayID, skierID);
-      res.getWriter().write("We've got your info!");
+      res.getWriter().write(" We've got your LiftRide info!");
     }
 }
 

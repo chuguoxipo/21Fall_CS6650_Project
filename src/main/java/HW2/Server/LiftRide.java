@@ -1,4 +1,4 @@
-package Server;
+package HW2.Server;
 
 public class LiftRide {
   private int skierID;
@@ -38,7 +38,7 @@ public class LiftRide {
 
   @Override
   public String toString() {
-    return "Server.LiftRide{" +
+    return "LiftRide{" +
         "skierID=" + skierID +
         ", liftID=" + liftID +
         ", time=" + time +
