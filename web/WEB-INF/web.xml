@@ -6,7 +6,7 @@
 
   <servlet>
     <servlet-name>SkierServlet</servlet-name>
-    <servlet-class>Server.SkierServlet</servlet-class>
+    <servlet-class>HW3.Server.SkierServlet</servlet-class>
   </servlet>
 
   <servlet-mapping>
